@@ -1,138 +1,121 @@
 <?php
-declare(strict_types=1);
-
-namespace Tests;
 
 use Crwlr\Url\Helpers;
 use Crwlr\Url\Schemes;
 use Crwlr\Url\Suffixes;
-use PHPUnit\Framework\TestCase;
 
-final class HelpersTest extends TestCase
-{
-    public function testGetHelperClassInstancesStatically(): void
-    {
-        $this->assertInstanceOf(Suffixes::class, Helpers::suffixes());
-        $this->assertInstanceOf(Schemes::class, Helpers::schemes());
-    }
+test('GetHelperClassInstancesStatically', function () {
+    expect(Helpers::suffixes())
+        ->toBeInstanceOf(Suffixes::class);
 
-    public function testBuildUrlFromComponents(): void
-    {
-        $this->assertEquals(
-            'https://user:pass@www.example.com:1234/foo/bar?query=string#fragment',
-            Helpers::buildUrlFromComponents([
-                'scheme' => 'https',
-                'user' => 'user',
-                'pass' => 'pass',
-                'host' => 'www.example.com',
-                'port' => 1234,
-                'path' => '/foo/bar',
-                'query' => 'query=string',
-                'fragment' => 'fragment',
-            ])
-        );
-    }
+    expect(Helpers::schemes())
+        ->toBeInstanceOf(Schemes::class);
+});
 
-    public function testBuildAuthorityFromComponents(): void
-    {
-        $this->assertEquals(
-            'user:password@www.example.com:1234',
-            Helpers::buildAuthorityFromComponents([
-                'user' => 'user',
-                'password' => 'password',
-                'host' => 'www.example.com',
-                'port' => 1234,
-            ])
-        );
+it('can build url from components', function () {
+    expect(Helpers::buildUrlFromComponents([
+        'scheme' => 'https',
+        'user' => 'user',
+        'pass' => 'pass',
+        'host' => 'www.example.com',
+        'port' => 1234,
+        'path' => '/foo/bar',
+        'query' => 'query=string',
+        'fragment' => 'fragment',
+    ]))->toBe('https://user:pass@www.example.com:1234/foo/bar?query=string#fragment');
+});
 
-        $this->assertEquals(
-            'user:password@www.example.com:1234',
-            Helpers::buildAuthorityFromComponents([
-                'user' => 'user',
-                'pass' => 'password',
-                'host' => 'www.example.com',
-                'port' => 1234,
-            ])
-        );
-    }
+it('can build authority from components', function (array $components) {
+    expect(Helpers::buildAuthorityFromComponents($components))
+        ->toBe('user:password@www.example.com:1234');
+})->with([
+    'regular' => fn () => [
+        'user' => 'user',
+        'password' => 'password',
+        'host' => 'www.example.com',
+        'port' => 1234,
+    ],
+    'abbreviation' => fn () => [
+        'user' => 'user',
+        'pass' => 'password',
+        'host' => 'www.example.com',
+        'port' => 1234,
+    ]
+]);
 
-    public function testBuildUserInfoFromComponents(): void
-    {
-        $this->assertEquals(
-            'user:password',
-            Helpers::buildUserInfoFromComponents(['user' => 'user', 'password' => 'password'])
-        );
 
-        $this->assertEquals(
-            'user:password',
-            Helpers::buildUserInfoFromComponents(['user' => 'user', 'pass' => 'password'])
-        );
-    }
+it('can build user info from components', function (array $components) {
+    expect(Helpers::buildUserInfoFromComponents($components))
+        ->toBe('user:password');
+})->with([
+    'regular' => fn () => ['user' => 'user', 'password' => 'password'],
+    'abbreviation' => fn () => ['user' => 'user', 'pass' => 'password'],
+]);
 
-    /**
-     * This test especially targets a problem in parse_str() which is used in the Parser class to convert a query
-     * string to array. The problem is, that dots within keys in the query string are replaced with underscores.
-     * For more information see https://github.com/crwlrsoft/url/issues/2
-     */
-    public function testQueryStringToArray(): void
-    {
-        $this->assertEquals(
-            [
-                'k.1' => 'v.1',
-                'k.2' => [
-                    's.k1' => 'v.2',
-                    's.k2' => 'v.3',
-                ]
-            ],
-            Helpers::queryStringToArray('k.1=v.1&k.2[s.k1]=v.2&k.2[s.k2]=v.3')
-        );
-    }
 
-    public function testGetStandardPortsByScheme(): void
-    {
-        $this->assertEquals(21, Helpers::getStandardPortByScheme('ftp'));
-        $this->assertEquals(9418, Helpers::getStandardPortByScheme('git'));
-        $this->assertEquals(80, Helpers::getStandardPortByScheme('http'));
-        $this->assertEquals(443, Helpers::getStandardPortByScheme('https'));
-        $this->assertEquals(143, Helpers::getStandardPortByScheme('imap'));
-        $this->assertEquals(194, Helpers::getStandardPortByScheme('irc'));
-        $this->assertEquals(2049, Helpers::getStandardPortByScheme('nfs'));
-        $this->assertEquals(873, Helpers::getStandardPortByScheme('rsync'));
-        $this->assertEquals(115, Helpers::getStandardPortByScheme('sftp'));
-        $this->assertEquals(25, Helpers::getStandardPortByScheme('smtp'));
 
-        $this->assertNull(Helpers::getStandardPortByScheme('unknownscheme'));
-    }
+/**
+ * This test especially targets a problem in parse_str() which is used in the Parser class to convert a query
+ * string to array. The problem is, that dots within keys in the query string are replaced with underscores.
+ * For more information see https://github.com/crwlrsoft/url/issues/2
+ */
+it('can convert a query string to an array', function () {
+    expect(Helpers::queryStringToArray('k.1=v.1&k.2[s.k1]=v.2&k.2[s.k2]=v.3'))
+        ->toBe([
+            'k.1' => 'v.1',
+            'k.2' => [
+                's.k1' => 'v.2',
+                's.k2' => 'v.3',
+            ]
+        ]);
+});
 
-    public function testStripFromEnd(): void
-    {
-        $this->assertEquals('example', Helpers::stripFromEnd('examplestring', 'string'));
-        $this->assertEquals('examplestring', Helpers::stripFromEnd('examplestring', 'strong'));
-        $this->assertEquals('examplestring', Helpers::stripFromEnd('examplestring', 'strin'));
-    }
+it('returns a standard port by scheme', function (string $scheme, ?int $port) {
+    expect(Helpers::getStandardPortByScheme($scheme))
+        ->toBe($port);
+})->with([
+    ['ftp', 21],
+    ['git', 9418],
+    ['http', 80],
+    ['https', 443],
+    ['imap', 143],
+    ['irc', 194],
+    ['nfs', 2049],
+    ['rsync', 873],
+    ['sftp', 115],
+    ['smtp', 25],
+    ['unknownscheme', null],
+]);
 
-    public function testStripFromStart(): void
-    {
-        $this->assertEquals('string', Helpers::stripFromStart('examplestring', 'example'));
-        $this->assertEquals('examplestring', Helpers::stripFromStart('examplestring', 'eggsample'));
-        $this->assertEquals('examplestring', Helpers::stripFromStart('examplestring', 'xample'));
-    }
+it('can strip from end', function (string $strip, string $expected) {
+    expect(Helpers::stripFromEnd('examplestring', $strip))
+        ->toBe($expected);
+})->with([
+    ['string', 'example'],
+    ['strong', 'examplestring'],
+    ['strin', 'examplestring'],
+]);
 
-    public function testReplaceFirstOccurrence(): void
-    {
-        $this->assertEquals('foo bas baz bar', Helpers::replaceFirstOccurrence('bar', 'bas', 'foo bar baz bar'));
-        $this->assertEquals('foo bar bar', Helpers::replaceFirstOccurrence('baz', 'bar', 'foo bar baz'));
-    }
+it('can strip from start', function (string $strip, string $expected) {
+    expect(Helpers::stripFromStart('examplestring', $strip))
+        ->toBe($expected);
+})->with([
+    ['example', 'string'],
+    ['eggsample', 'examplestring'],
+    ['xample', 'examplestring'],
+]);
 
-    public function testStartsWith(): void
-    {
-        $this->assertTrue(Helpers::startsWith('Raindrops Keep Fallin\' on My Head', 'Raindrops Keep'));
-        $this->assertFalse(Helpers::startsWith('Raindrops Keep Fallin\' on My Head', 'Braindrops Keep'));
-    }
+it('can replace first occurrence', function () {
+    expect(Helpers::replaceFirstOccurrence('bar', 'bas', 'foo bar baz bar'))->toBe('foo bas baz bar');
+    expect(Helpers::replaceFirstOccurrence('baz', 'bar', 'foo bar baz'))->toBe('foo bar bar');
+});
 
-    public function testContainsXBeforeFirstY(): void
-    {
-        $this->assertTrue(Helpers::containsXBeforeFirstY('one-two-three-two', '-', 'two'));
-        $this->assertFalse(Helpers::containsXBeforeFirstY('one-two-three-two', 'three', 'two'));
-    }
-}
+it('can tell if a string starts with', function () {
+    expect(Helpers::startsWith('Raindrops Keep Fallin\' on My Head', 'Raindrops Keep'))->toBeTrue();
+    expect(Helpers::startsWith('Raindrops Keep Fallin\' on My Head', 'Braindrops Keep'))->toBeFalse();
+});
+
+it('can tell if a string contains x before first y', function () {
+    expect(Helpers::containsXBeforeFirstY('one-two-three-two', '-', 'two'))->toBeTrue();
+    expect(Helpers::containsXBeforeFirstY('one-two-three-two', 'three', 'two'))->toBeFalse();
+});

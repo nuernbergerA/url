@@ -1,44 +1,33 @@
 <?php
-declare(strict_types=1);
-
-namespace Tests;
 
 use Crwlr\Url\Domain;
-use PHPUnit\Framework\TestCase;
 
-final class DomainTest extends TestCase
-{
-    /**
-     * The domain class is really simple and assumes input validation happens somewhere else, so this test
-     * is rather short ;p
-     */
-    public function testDomain(): void
-    {
-        $domain = new Domain('example.com');
-        $this->assertInstanceOf(Domain::class, $domain);
-        $this->assertEquals('example', $domain->label());
-        $this->assertEquals('com', $domain->suffix());
-        $this->assertEquals('example.com', $domain->__toString());
+/**
+ * The domain class is really simple and assumes input validation happens somewhere else, so this test
+ * is rather short ;p
+ */
+test('valid', function () {
+    expect(new Domain('example.com'))
+        ->toBeInstanceOf(Domain::class)
+        ->label()->toBe('example')
+        ->suffix()->toBe('com')
+        ->__toString()->toBe('example.com');
+});
 
-        $domain = new Domain('notadomain');
-        $this->assertInstanceOf(Domain::class, $domain);
-        $this->assertNull($domain->label());
-        $this->assertNull($domain->suffix());
-        $this->assertEmpty($domain->__toString());
-    }
+test('invalid', function () {
+    expect(new Domain('notadomain'))
+        ->toBeInstanceOf(Domain::class)
+        ->label()->toBeNull()
+        ->suffix()->toBeNull()
+        ->__toString()->toBeEmpty();
+});
 
-    public function testIsIdn(): void
-    {
-        $domain = new Domain('example.com');
-        $this->assertFalse($domain->isIdn());
-
-        $domain = new Domain('ex-ample.com');
-        $this->assertFalse($domain->isIdn());
-
-        $domain = new Domain('xn--mnnersalon-q5a.at'); // männersalon.at
-        $this->assertTrue($domain->isIdn());
-
-        $domain = new Domain('xn--mller-kva.de'); // müller.de
-        $this->assertTrue($domain->isIdn());
-    }
-}
+it('can tell if its a Idn', function (string $domain, bool $expected) {
+    expect((new Domain($domain))->isIdn())
+        ->toBe($expected);
+})->with([
+    'example.com' => ['example.com', false],
+    'ex-ample.com' => ['ex-ample.com', false],
+    'männersalon.at' => ['xn--mnnersalon-q5a.at', true],
+    'müller.de' => ['xn--mller-kva.de', true],
+]);

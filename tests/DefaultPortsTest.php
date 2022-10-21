@@ -1,52 +1,48 @@
 <?php
-declare(strict_types=1);
-
-namespace Tests;
 
 use Crwlr\Url\DefaultPorts;
-use PHPUnit\Framework\TestCase;
 
-final class DefaultPortsTest extends TestCase
-{
-    public function testGetFallbackDefaultPorts(): void
-    {
-        $this->assertEquals(21, (new DefaultPorts())->get('ftp'));
-        $this->assertEquals(9418, (new DefaultPorts())->get('git'));
-        $this->assertEquals(80, (new DefaultPorts())->get('http'));
-        $this->assertEquals(443, (new DefaultPorts())->get('https'));
-        $this->assertEquals(143, (new DefaultPorts())->get('imap'));
-        $this->assertEquals(194, (new DefaultPorts())->get('irc'));
-        $this->assertEquals(994, (new DefaultPorts())->get('ircs'));
-        $this->assertEquals(389, (new DefaultPorts())->get('ldap'));
-        $this->assertEquals(636, (new DefaultPorts())->get('ldaps'));
-        $this->assertEquals(2049, (new DefaultPorts())->get('nfs'));
-        $this->assertEquals(115, (new DefaultPorts())->get('sftp'));
-        $this->assertEquals(25, (new DefaultPorts())->get('smtp'));
-        $this->assertEquals(22, (new DefaultPorts())->get('ssh'));
-    }
+it('returns a port for each listed default protocol', function (string $protocol, int $port) {
+    expect((new DefaultPorts())->get($protocol))
+        ->toBe($port);
+})->with([
+    ['ftp', 21],
+    ['git', 9418],
+    ['http', 80],
+    ['https', 443],
+    ['imap', 143],
+    ['irc', 194],
+    ['ircs', 994],
+    ['ldap', 389],
+    ['ldaps', 636],
+    ['nfs', 2049],
+    ['sftp', 115],
+    ['smtp', 25],
+    ['ssh', 22],
+]);
 
-    public function testGetDefaultPortsNotInFallbackList(): void
-    {
-        $this->assertEquals(2019, (new DefaultPorts())->get('about'));
-        $this->assertEquals(674, (new DefaultPorts())->get('acap'));
-        $this->assertEquals(70, (new DefaultPorts())->get('gopher'));
-        $this->assertEquals(1038, (new DefaultPorts())->get('mtqp'));
-        $this->assertEquals(2009, (new DefaultPorts())->get('news'));
-        $this->assertEquals(873, (new DefaultPorts())->get('rsync'));
-        $this->assertEquals(3690, (new DefaultPorts())->get('svn'));
-        $this->assertEquals(23, (new DefaultPorts())->get('telnet'));
-        $this->assertEquals(516, (new DefaultPorts())->get('videotex'));
-    }
+it('returns a port for each unlisted protocol', function (string $protocol, int $port) {
+    expect((new DefaultPorts())->get($protocol))
+        ->toBe($port);
+})->with([
+    ['about', 2019],
+    ['acap', 674],
+    ['gopher', 70],
+    ['mtqp', 1038],
+    ['news', 2009],
+    ['rsync', 873],
+    ['svn', 3690],
+    ['telnet', 23],
+    ['videotex', 516],
+]);
 
-    public function testExists(): void
-    {
-        $this->assertTrue((new DefaultPorts())->exists('http'));
-        $this->assertFalse((new DefaultPorts())->exists('notexistingscheme'));
-    }
+it('can tell i a port exists for a given protocol', function () {
+    expect(new DefaultPorts())
+        ->exists('http')->toBeTrue()
+        ->exists('notexistingscheme')->toBeFalse();
+});
 
-    public function testGetStorePath(): void
-    {
-        $defaultPorts = new DefaultPorts();
-        $this->assertEquals(realpath(dirname(__DIR__) . '/data/default-ports.php'), $defaultPorts->getStorePath());
-    }
-}
+it('returns the path for default ports', function () {
+    expect((new DefaultPorts())->getStorePath())
+        ->tobe(realpath(dirname(__DIR__) . '/data/default-ports.php'));
+});
