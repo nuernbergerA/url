@@ -1,441 +1,419 @@
 <?php
-declare(strict_types=1);
-
-namespace Tests;
 
 use Crwlr\Url\Validator;
-use PHPUnit\Framework\TestCase;
 
-final class ValidatorTest extends TestCase
-{
-    public function testValidateUrl(): void
-    {
-        $this->assertEquals(
-            'https://www.crwlr.software/packages/url/v0.1.2#installation',
-            Validator::url('https://www.crwlr.software/packages/url/v0.1.2#installation')
-        );
-    }
+test('valid urls', function (string $url, string $expectedValidUrl) {
+    expect(Validator::url($url))
+        ->toBe($expectedValidUrl);
+})->with([
+    'regular' => ['https://www.crwlr.software/packages/url/v0.1.2#installation', 'https://www.crwlr.software/packages/url/v0.1.2#installation'],
+    'special characters' => ['https://u§er:pássword@sub.domäin.example.org:345/föô/bár?quär.y=strïng#frägmänt', 'https://u%C2%A7er:p%C3%A1ssword@sub.xn--domin-ira.example.org:345' . '/f%C3%B6%C3%B4/b%C3%A1r?qu%C3%A4r.y=str%C3%AFng#fr%C3%A4gm%C3%A4nt'],
+]);
 
-    public function testValidateUrlWithSpecialCharacters(): void
-    {
-        $this->assertEquals(
-            'https://u%C2%A7er:p%C3%A1ssword@sub.xn--domin-ira.example.org:345' .
-            '/f%C3%B6%C3%B4/b%C3%A1r?qu%C3%A4r.y=str%C3%AFng#fr%C3%A4gm%C3%A4nt',
-            Validator::url('https://u§er:pássword@sub.domäin.example.org:345/föô/bár?quär.y=strïng#frägmänt')
-        );
-    }
+test('invalid urls', function (string $url) {
+    expect(Validator::url($url))
+        ->toBeNull();
+})->with([
+    '1http://example.com/stuff',
+    '  https://wwww.example.com  ',
+    'http://',
+    'http://.',
+    'https://..',
+    'https://../',
+    'http://?',
+    'http://#',
+    '//',
+    '///foo',
+    'http:///foo',
+    '://',
+]);
 
-    /**
-     * Invalid URL strings.
-     */
-    public function testValidateInvalidUrl(): void
-    {
-        $this->assertNull(Validator::url('1http://example.com/stuff'));
-        $this->assertNull(Validator::url('  https://wwww.example.com  '));
-        $this->assertNull(Validator::url('http://'));
-        $this->assertNull(Validator::url('http://.'));
-        $this->assertNull(Validator::url('https://..'));
-        $this->assertNull(Validator::url('https://../'));
-        $this->assertNull(Validator::url('http://?'));
-        $this->assertNull(Validator::url('http://#'));
-        $this->assertNull(Validator::url('//'));
-        $this->assertNull(Validator::url('///foo'));
-        $this->assertNull(Validator::url('http:///foo'));
-        $this->assertNull(Validator::url('://'));
-    }
+test('valid UrlAndComponents', function (string $url, array $expected) {
+    expect(Validator::urlAndComponents($url))
+        ->toBeArray()
+        ->toMatchArray($expected);
+})->with([
+    [
+        'https://www.crwlr.software/packages/url/v0.1.2#installation',
+        [
+            'url' => 'https://www.crwlr.software/packages/url/v0.1.2#installation',
+            'scheme' => 'https',
+            'host' => 'www.crwlr.software',
+            'path' => '/packages/url/v0.1.2',
+            'fragment' => 'installation',
+        ],
+    ],
+    [
+        '/foo/bar?query=string#fragment',
+        [
+            'url' => '/foo/bar?query=string#fragment',
+            'path' => '/foo/bar',
+            'query' => 'query=string',
+            'fragment' => 'fragment',
+        ],
+    ],
+    [
+        'ftp://username:password@example.org',
+        [
+            'url' => 'ftp://username:password@example.org',
+            'scheme' => 'ftp',
+            'user' => 'username',
+            'pass' => 'password',
+            'host' => 'example.org',
+        ],
+    ],
+    [
+        'mailto:you@example.com?subject=crwlr software',
+        ['url' => 'mailto:you@example.com?subject=crwlr%20software'],
+    ],
+    [
+        'http://✪df.ws/123',
+        [
+            'url' => 'http://xn--df-oiy.ws/123',
+            'scheme' => 'http',
+            'host' => 'xn--df-oiy.ws',
+            'path' => '/123',
+        ],
+    ],
+    [
+        'https://www.example.онлайн/stuff',
+        [
+            'url' => 'https://www.example.xn--80asehdb/stuff',
+            'scheme' => 'https',
+            'host' => 'www.example.xn--80asehdb',
+            'path' => '/stuff',
+        ],
+    ],
+]);
 
-    public function testValidateUrlAndComponents(): void
-    {
-        $this->assertArrayContains(
-            Validator::urlAndComponents('https://www.crwlr.software/packages/url/v0.1.2#installation'),
-            [
-                'url' => 'https://www.crwlr.software/packages/url/v0.1.2#installation',
-                'scheme' => 'https',
-                'host' => 'www.crwlr.software',
-                'path' => '/packages/url/v0.1.2',
-                'fragment' => 'installation',
-            ]
-        );
+test('invalid UrlAndComponents', function (string $url) {
+    expect(Validator::urlAndComponents($url))
+        ->toBeNull();
+})->with([
+    '1http://example.com/stuff',
+    '  https://wwww.example.com  ',
+    'http://',
+    'http://.',
+    'https://..',
+    'https://../',
+    'http://?',
+    'http://#',
+    '//',
+    '///foo',
+    'http:///foo',
+    '://',
+]);
 
-        $this->assertArrayContains(
-            Validator::urlAndComponents('/foo/bar?query=string#fragment'),
-            [
-                'url' => '/foo/bar?query=string#fragment',
-                'path' => '/foo/bar',
-                'query' => 'query=string',
-                'fragment' => 'fragment',
-            ]
-        );
+test('AbsoluteUrl', function (string $url, ?string $expected) {
+    expect(Validator::absoluteUrl($url))
+        ->toBe($expected);
+})->with([
+    'valid' => [
+        'https://www.crwlr.software/packages/url/v0.1.2#installation',
+        'https://www.crwlr.software/packages/url/v0.1.2#installation',
+    ],
+    'invalid' => [
+        '/foo/bar?query=string#fragment',
+        null,
+    ],
+]);
 
-        $this->assertArrayContains(
-            Validator::urlAndComponents('ftp://username:password@example.org'),
-            [
-                'url' => 'ftp://username:password@example.org',
-                'scheme' => 'ftp',
-                'user' => 'username',
-                'pass' => 'password',
-                'host' => 'example.org',
-            ]
-        );
+test('ValidateAbsoluteUrlAndComponents', function() {
+    expect(Validator::absoluteUrlAndComponents('https://www.crwlr.software/packages/url/v0.1.2#installation'))
+        ->toBeArray()
+        ->toMatchArray([
+            'url' => 'https://www.crwlr.software/packages/url/v0.1.2#installation',
+            'scheme' => 'https',
+            'host' => 'www.crwlr.software',
+            'path' => '/packages/url/v0.1.2',
+            'fragment' => 'installation',
+        ]);
 
-        $this->assertArrayContains(
-            Validator::urlAndComponents('mailto:you@example.com?subject=crwlr software'),
-            ['url' => 'mailto:you@example.com?subject=crwlr%20software']
-        );
-    }
+    expect(Validator::absoluteUrlAndComponents('/foo/bar?query=string#fragment'))
+        ->toBeNull();
+});
 
-    public function testValidateIdnUrlAndComponents(): void
-    {
-        $this->assertArrayContains(
-            Validator::urlAndComponents('http://✪df.ws/123'),
-            [
-                'url' => 'http://xn--df-oiy.ws/123',
-                'scheme' => 'http',
-                'host' => 'xn--df-oiy.ws',
-                'path' => '/123',
-            ]
-        );
+test('Scheme', function (string $scheme, ?string $expected) {
+    expect(Validator::scheme($scheme))
+        ->toBe($expected);
+})->with([
+    ['http', 'http'],
+    ['mailto', 'mailto'],
+    ['ssh', 'ssh'],
+    ['ftp', 'ftp'],
+    ['sftp', 'sftp'],
+    ['wss', 'wss'],
+    ['HTTPS', 'https'],
+    ['1invalidscheme', null],
+    ['mäilto', null],
+]);
 
-        $this->assertArrayContains(
-            Validator::urlAndComponents('https://www.example.онлайн/stuff'),
-            [
-                'url' => 'https://www.example.xn--80asehdb/stuff',
-                'scheme' => 'https',
-                'host' => 'www.example.xn--80asehdb',
-                'path' => '/stuff',
-            ]
-        );
-    }
+test('Authority', function(string $authority, ?string $expected) {
+    expect(Validator::authority($authority))
+        ->toBe($expected);
+})->with([
+    ['12.34.56.78','12.34.56.78'],
+    ['localhost','localhost'],
+    ['www.example.com:8080','www.example.com:8080'],
+    ['user:password@www.example.org:1234','user:password@www.example.org:1234'],
+    ['user:password@:1234', null],
+    ['', null],
+]);
 
-    public function testValidateInvalidUrlAndComponents(): void
-    {
-        $this->assertNull(Validator::urlAndComponents('1http://example.com/stuff'));
-        $this->assertNull(Validator::urlAndComponents('  https://wwww.example.com  '));
-        $this->assertNull(Validator::urlAndComponents('http://'));
-        $this->assertNull(Validator::urlAndComponents('http://.'));
-        $this->assertNull(Validator::urlAndComponents('https://..'));
-        $this->assertNull(Validator::urlAndComponents('https://../'));
-        $this->assertNull(Validator::urlAndComponents('http://?'));
-        $this->assertNull(Validator::urlAndComponents('http://#'));
-        $this->assertNull(Validator::urlAndComponents('//'));
-        $this->assertNull(Validator::urlAndComponents('///foo'));
-        $this->assertNull(Validator::urlAndComponents('http:///foo'));
-        $this->assertNull(Validator::urlAndComponents('://'));
-    }
+test('ValidateAuthorityComponents', function () {
+    expect(Validator::authorityComponents('user:password@www.example.org:1234'))
+        ->toBeArray()
+        ->toMatchArray([
+            'userInfo' => 'user:password',
+            'user' => 'user',
+            'password' => 'password',
+            'host' => 'www.example.org',
+            'port' => 1234,
+        ]);
+});
 
-    public function testValidateAbsoluteUrl(): void
-    {
-        $this->assertEquals(
-            'https://www.crwlr.software/packages/url/v0.1.2#installation',
-            Validator::absoluteUrl('https://www.crwlr.software/packages/url/v0.1.2#installation')
-        );
+test('ValidateInvalidAuthorityComponents', function (string $authority) {
+    expect(Validator::authorityComponents($authority))
+        ->toBeNull();
+})->with([
+    'user:password@:1234',
+    '',
+]);
 
-        $this->assertNull(Validator::absoluteUrl('/foo/bar?query=string#fragment'));
-    }
+test('ValidateUserInfo', function (string $userInfo, ?string $expectedComponents) {
+    expect(Validator::userInfo($userInfo))
+        ->toBe($expectedComponents);
+})->with([
+    ['user:password', 'user:password'],
+    ['u§er:pássword', 'u%C2%A7er:p%C3%A1ssword'],
+    [':password', null],
+]);
 
-    public function testValidateAbsoluteUrlAndComponents(): void
-    {
-        $this->assertArrayContains(
-            Validator::absoluteUrlAndComponents('https://www.crwlr.software/packages/url/v0.1.2#installation'),
-            [
-                'url' => 'https://www.crwlr.software/packages/url/v0.1.2#installation',
-                'scheme' => 'https',
-                'host' => 'www.crwlr.software',
-                'path' => '/packages/url/v0.1.2',
-                'fragment' => 'installation',
-            ]
-        );
+test('ValidateUserInfoComponents', function () {
+    expect(Validator::userInfoComponents('crwlr:software'))
+        ->toBeArray()
+        ->toMatchArray([
+            'user' => 'crwlr',
+            'password' => 'software',
+        ]);
 
-        $this->assertNull(Validator::absoluteUrlAndComponents('/foo/bar?query=string#fragment'));
-    }
+    expect(Validator::userInfoComponents('u§er:pássword'))
+        ->toBeArray()
+        ->toMatchArray([
+            'user' => 'u%C2%A7er',
+            'password' => 'p%C3%A1ssword',
+        ]);
 
-    public function testValidateScheme(): void
-    {
-        $this->assertEquals('http', Validator::scheme('http'));
-        $this->assertEquals('mailto', Validator::scheme('mailto'));
-        $this->assertEquals('ssh', Validator::scheme('ssh'));
-        $this->assertEquals('ftp', Validator::scheme('ftp'));
-        $this->assertEquals('sftp', Validator::scheme('sftp'));
-        $this->assertEquals('wss', Validator::scheme('wss'));
-        $this->assertEquals('https', Validator::scheme('HTTPS'));
+    expect(Validator::userInfoComponents(':password'))
+        ->toBeNull();
+});
 
-        $this->assertNull(Validator::scheme('1invalidscheme'));
-        $this->assertNull(Validator::scheme('mäilto'));
-    }
+test('ValidateUser', function (string $input, string $expected) {
+    expect(Validator::user($input))
+        ->toBe($expected);
+})->with([
+    ['user', 'user'],
+    ['user-123', 'user-123'],
+    ['user_123', 'user_123'],
+    ['user%123', 'user%123'],
+    ['u$3r_n4m3!', 'u$3r_n4m3!'],
+    ['u$3r\'$_n4m3', 'u$3r\'$_n4m3'],
+    ['u$3r*n4m3', 'u$3r*n4m3'],
+    ['u$3r,n4m3', 'u$3r,n4m3'],
+    ['=u$3r=', '=u$3r='],
+    ['u§3rname', 'u%C2%A73rname'],
+    ['user:name', 'user%3Aname'],
+    ['Üsernäme', '%C3%9Csern%C3%A4me'],
+    ['user°name', 'user%C2%B0name'],
+    ['<username>', '%3Cusername%3E'],
+    ['usern@me', 'usern%40me'],
+    ['us€rname', 'us%E2%82%ACrname'],
+]);
 
-    public function testValidateAuthority(): void
-    {
-        $this->assertEquals('12.34.56.78', Validator::authority('12.34.56.78'));
-        $this->assertEquals('localhost', Validator::authority('localhost'));
-        $this->assertEquals('www.example.com:8080', Validator::authority('www.example.com:8080'));
-        $this->assertEquals(
-            'user:password@www.example.org:1234',
-            Validator::authority('user:password@www.example.org:1234')
-        );
-    }
+test('ValidatePassword', function (string $password, string $expected) {
+    expect(Validator::password($password))->toBe($expected);
+    expect(Validator::pass($password))->toBe($expected);
+})->with([
+    ['pASS123', 'pASS123'],
+    ['P4ss.123', 'P4ss.123'],
+    ['p4ss~123', 'p4ss~123'],
+    ['p4ss-123!', 'p4ss-123!'],
+    ['p4$$&w0rD', 'p4$$&w0rD'],
+    ['(p4$$-w0rD)', '(p4$$-w0rD)'],
+    ['p4$$+W0rD', 'p4$$+W0rD'],
+    ['P4ss;w0rd', 'P4ss;w0rd'],
+    ['"password"', '%22password%22'],
+    ['pass`word', 'pass%60word'],
+    ['pass^word', 'pass%5Eword'],
+    ['pass🤓moji', 'pass%F0%9F%A4%93moji'],
+    ['pass\word', 'pass%5Cword'],
+    ['paßword', 'pa%C3%9Fword'],
+]);
 
-    public function testValidateInvalidAuthority(): void
-    {
-        $this->assertNull(Validator::authority('user:password@:1234'));
-        $this->assertNull(Validator::authority(''));
-    }
+test('ValidateHost', function (string $host, string $expected) {
+    expect(Validator::host($host))
+        ->toBe($expected);
+})->with([
+    ['example.com', 'example.com'],
+    ['www.example.com', 'www.example.com'],
+    ['www.example.com.', 'www.example.com.'],
+    ['subdomain.example.com', 'subdomain.example.com'],
+    ['www.some-domain.io', 'www.some-domain.io'],
+    ['123456.co.uk', '123456.co.uk'],
+    ['WWW.EXAMPLE.COM', 'www.example.com'],
+    ['www-something.blog', 'www-something.blog'],
+    ['h4ck0r.software', 'h4ck0r.software'],
+    ['g33ks.org', 'g33ks.org'],
+    ['example.онлайн', 'example.xn--80asehdb'],
+    ['example.xn--80asehdb', 'example.xn--80asehdb'],
+    ['www.са.com', 'www.xn--80a7a.com'], // Fake "a" in ca.com => idn domain
+    ['12.34.56.78', '12.34.56.78'],
+    ['localhost', 'localhost'],
+    ['dev.local', 'dev.local'],
+]);
 
-    public function testValidateAuthorityComponents(): void
-    {
-        $this->assertArrayContains(
-            Validator::authorityComponents('user:password@www.example.org:1234'),
-            [
-                'userInfo' => 'user:password',
-                'user' => 'user',
-                'password' => 'password',
-                'host' => 'www.example.org',
-                'port' => 1234,
-            ]
-        );
-    }
+test('invalid host', function (string $host) {
+    expect(Validator::host($host))
+        ->toBeNull();
+})->with([
+    'slash/example.com',
+    'exclamation!mark.co',
+    'question?mark.blog',
+    'under_score.org',
+    'www.(parenthesis).net',
+    'idk.amper&sand.uk',
+    'equals=.ch',
+    'apostrophe\'.at',
+    'one+one.mobile',
+    'hash#tag.social',
+    'co:lon.com',
+    'semi;colon.net',
+    '<html>.codes',
+    'www..com',
+]);
 
-    public function testValidateInvalidAuthorityComponents(): void
-    {
-        $this->assertNull(Validator::authorityComponents('user:password@:1234'));
-        $this->assertNull(Validator::authorityComponents(''));
-    }
+test('ValidateDomainSuffix', function (string $suffix, ?string $expected) {
+   expect(Validator::domainSuffix($suffix))
+       ->toBe($expected);
+})->with([
+    ['com', 'com'],
+    ['org', 'org'],
+    ['net', 'net'],
+    ['blog', 'blog'],
+    ['codes', 'codes'],
+    ['wtf', 'wtf'],
+    ['sexy', 'sexy'],
+    ['tennis', 'tennis'],
+    ['versicherung', 'versicherung'],
+    ['点看', 'xn--3pxu8k'],
+    ['онлайн', 'xn--80asehdb'],
+    ['大拿', 'xn--pssy2u'],
+    ['co.uk', 'co.uk'],
+    ['co.at', 'co.at'],
+    ['or.at', 'or.at'],
+    ['anything.bd', 'anything.bd'],
+    ['süffix', null],
+    ['idk', null],
+]);
 
-    public function testValidateUserInfo(): void
-    {
-        $this->assertEquals('user:password', Validator::userInfo('user:password'));
-        $this->assertEquals('u%C2%A7er:p%C3%A1ssword', Validator::userInfo('u§er:pássword'));
-        $this->assertNull(Validator::userInfoComponents(':password'));
-    }
+test('ValidateDomain', function (string $domain, ?string $expected) {
+    expect(Validator::domain($domain))
+        ->toBe($expected);
+})->with([
+    ['google.com', 'google.com'],
+    ['example.xn--80asehdb', 'example.xn--80asehdb'],
+    ['example.онлайн', 'example.xn--80asehdb'],
+    ['www.google.com', null],
+    ['yolo', null],
+    ['subdomain.example.онлайн', null],
+]);
 
-    public function testValidateUserInfoComponents(): void
-    {
-        $this->assertArrayContains(
-            Validator::userInfoComponents('crwlr:software'),
-            [
-                'user' => 'crwlr',
-                'password' => 'software',
-            ]
-        );
+test('ValidateDomainLabel', function (string $domainLabel, ?string $expected) {
+    expect(Validator::domainLabel($domainLabel))
+    ->toBe($expected);
+})->with([
+    ['yolo', 'yolo'],
+    ['männersalon', 'xn--mnnersalon-q5a'],
+    ['yo!lo', null],
+    ['', null],
+]);
 
-        $this->assertArrayContains(
-            Validator::userInfoComponents('u§er:pássword'),
-            [
-                'user' => 'u%C2%A7er',
-                'password' => 'p%C3%A1ssword',
-            ]
-        );
+test('ValidateSubdomain', function (string $subdomain, ?string $expected) {
+    expect(Validator::subdomain($subdomain))
+        ->toBe($expected);
+})->with([
+    ['www', 'www'],
+    ['sub.domain', 'sub.domain'],
+    ['SUB.DO.MAIN', 'sub.do.main'],
+    ['sub_domain', null],
+]);
 
-        $this->assertNull(Validator::userInfoComponents(':password'));
-    }
+test('ValidatePort', function (int $port, ?int $expected) {
+    expect(Validator::port($port))
+        ->toBe($expected);
+})->with([
+    [0, 0],
+    [8080, 8080],
+    [65535, 65535],
+    [-1, null],
+    [65536, null],
+]);
 
-    public function testValidateUser(): void
-    {
-        $this->assertEquals('user', Validator::user('user'));
-        $this->assertEquals('user-123', Validator::user('user-123'));
-        $this->assertEquals('user_123', Validator::user('user_123'));
-        $this->assertEquals('user%123', Validator::user('user%123'));
-        $this->assertEquals('u$3r_n4m3!', Validator::user('u$3r_n4m3!'));
-        $this->assertEquals('u$3r\'$_n4m3', Validator::user('u$3r\'$_n4m3'));
-        $this->assertEquals('u$3r*n4m3', Validator::user('u$3r*n4m3'));
-        $this->assertEquals('u$3r,n4m3', Validator::user('u$3r,n4m3'));
-        $this->assertEquals('=u$3r=', Validator::user('=u$3r='));
+test('ValidatePath', function (string $path, string $expected) {
+    expect(Validator::path($path))
+        ->toBe($expected);
+})->with([
+    ['/FoO/bAr', '/FoO/bAr'],
+    ['/foo-123/bar_456', '/foo-123/bar_456'],
+    ['/~foo/!bar$/&baz\'', '/~foo/!bar$/&baz\''],
+    ['/(foo)/*bar+', '/(foo)/*bar+'],
+    ['/foo,bar;baz:', '/foo,bar;baz:'],
+    ['/foo=bar@baz', '/foo=bar@baz'],
+    ['/"foo"', '/%22foo%22'],
+    ['/foo\\bar', '/foo%5Cbar'],
+    ['/bößer/pfad', '/b%C3%B6%C3%9Fer/pfad'],
+    ['/<html>', '/%3Chtml%3E'],
+    ['/foo%bar', '/foo%bar'], // Percent character not encoded (to %25) because %ba could be legitimate percent encoded character.
+    ['/foo%gar', '/foo%25gar'], // Percent character encoded because %ga isn't a valid percent encoded character.
+]);
 
-        $this->assertEquals('u%C2%A73rname', Validator::user('u§3rname'));
-        $this->assertEquals('user%3Aname', Validator::user('user:name'));
-        $this->assertEquals('%C3%9Csern%C3%A4me', Validator::user('Üsernäme'));
-        $this->assertEquals('user%C2%B0name', Validator::user('user°name'));
-        $this->assertEquals('%3Cusername%3E', Validator::user('<username>'));
-        $this->assertEquals('usern%40me', Validator::user('usern@me'));
-        $this->assertEquals('us%E2%82%ACrname', Validator::user('us€rname'));
-    }
+test('ValidateQuery', function (string $query, string $expected) {
+    expect(Validator::query($query))
+        ->toBe($expected);
+})->with([
+    ['foo=bar', 'foo=bar'],
+    ['?foo=bar', 'foo=bar'],
+    ['foo1=bar&foo2=baz', 'foo1=bar&foo2=baz'],
+    ['.foo-=_bar~', '.foo-=_bar~'],
+    ['%foo!=$bar\'', '%25foo!=$bar\''],
+    ['(foo)=*bar+', '(foo)=*bar+'],
+    ['f,o;o==bar:', 'f,o;o==bar:'],
+    ['?@foo=/bar?', '@foo=/bar%3F'],
+    ['"foo"=bar', '%22foo%22=bar'],
+    ['foo#=bar', 'foo%23=bar'],
+    ['föo=bar', 'f%C3%B6o=bar'],
+    ['boeßer=query', 'boe%C3%9Fer=query'],
+    ['foo`=bar', 'foo%60=bar'],
+    ['foo%25bar=baz', 'foo%25bar=baz'],
+]);
 
-    public function testValidatePassword(): void
-    {
-        $this->assertEquals('pASS123', Validator::password('pASS123'));
-        $this->assertEquals('P4ss.123', Validator::pass('P4ss.123'));
-        $this->assertEquals('p4ss~123', Validator::password('p4ss~123'));
-        $this->assertEquals('p4ss-123!', Validator::pass('p4ss-123!'));
-        $this->assertEquals('p4$$&w0rD', Validator::password('p4$$&w0rD'));
-        $this->assertEquals('(p4$$-w0rD)', Validator::pass('(p4$$-w0rD)'));
-        $this->assertEquals('p4$$+W0rD', Validator::password('p4$$+W0rD'));
-        $this->assertEquals('P4ss;w0rd', Validator::pass('P4ss;w0rd'));
-
-        $this->assertEquals('%22password%22', Validator::password('"password"'));
-        $this->assertEquals('pass%60word', Validator::pass('pass`word'));
-        $this->assertEquals('pass%5Eword', Validator::password('pass^word'));
-        $this->assertEquals('pass%F0%9F%A4%93moji', Validator::pass('pass🤓moji'));
-        $this->assertEquals('pass%5Cword', Validator::password('pass\word'));
-        $this->assertEquals('pa%C3%9Fword', Validator::pass('paßword'));
-    }
-
-    public function testValidateHost(): void
-    {
-        $this->assertEquals('example.com', Validator::host('example.com'));
-        $this->assertEquals('www.example.com', Validator::host('www.example.com'));
-        $this->assertEquals('www.example.com.', Validator::host('www.example.com.'));
-        $this->assertEquals('subdomain.example.com', Validator::host('subdomain.example.com'));
-        $this->assertEquals('www.some-domain.io', Validator::host('www.some-domain.io'));
-        $this->assertEquals('123456.co.uk', Validator::host('123456.co.uk'));
-        $this->assertEquals('www.example.com', Validator::host('WWW.EXAMPLE.COM'));
-        $this->assertEquals('www-something.blog', Validator::host('www-something.blog'));
-        $this->assertEquals('h4ck0r.software', Validator::host('h4ck0r.software'));
-        $this->assertEquals('g33ks.org', Validator::host('g33ks.org'));
-        $this->assertEquals('example.xn--80asehdb', Validator::host('example.онлайн'));
-        $this->assertEquals('example.xn--80asehdb', Validator::host('example.xn--80asehdb'));
-        $this->assertEquals('www.xn--80a7a.com', Validator::host('www.са.com')); // Fake "a" in ca.com => idn domain
-        $this->assertEquals('12.34.56.78', Validator::host('12.34.56.78'));
-        $this->assertEquals('localhost', Validator::host('localhost'));
-        $this->assertEquals('dev.local', Validator::host('dev.local'));
-
-        $this->assertNull(Validator::host('slash/example.com'));
-        $this->assertNull(Validator::host('exclamation!mark.co'));
-        $this->assertNull(Validator::host('question?mark.blog'));
-        $this->assertNull(Validator::host('under_score.org'));
-        $this->assertNull(Validator::host('www.(parenthesis).net'));
-        $this->assertNull(Validator::host('idk.amper&sand.uk'));
-        $this->assertNull(Validator::host('equals=.ch'));
-        $this->assertNull(Validator::host('apostrophe\'.at'));
-        $this->assertNull(Validator::host('one+one.mobile'));
-        $this->assertNull(Validator::host('hash#tag.social'));
-        $this->assertNull(Validator::host('co:lon.com'));
-        $this->assertNull(Validator::host('semi;colon.net'));
-        $this->assertNull(Validator::host('<html>.codes'));
-        $this->assertNull(Validator::host('www..com'));
-    }
-
-    public function testValidateDomainSuffix(): void
-    {
-        $this->assertEquals('com', Validator::domainSuffix('com'));
-        $this->assertEquals('org', Validator::domainSuffix('org'));
-        $this->assertEquals('net', Validator::domainSuffix('net'));
-        $this->assertEquals('blog', Validator::domainSuffix('blog'));
-        $this->assertEquals('codes', Validator::domainSuffix('codes'));
-        $this->assertEquals('wtf', Validator::domainSuffix('wtf'));
-        $this->assertEquals('sexy', Validator::domainSuffix('sexy'));
-        $this->assertEquals('tennis', Validator::domainSuffix('tennis'));
-        $this->assertEquals('versicherung', Validator::domainSuffix('versicherung'));
-        $this->assertEquals('xn--3pxu8k', Validator::domainSuffix('点看'));
-        $this->assertEquals('xn--80asehdb', Validator::domainSuffix('онлайн'));
-        $this->assertEquals('xn--pssy2u', Validator::domainSuffix('大拿'));
-        $this->assertEquals('co.uk', Validator::domainSuffix('co.uk'));
-        $this->assertEquals('co.at', Validator::domainSuffix('co.at'));
-        $this->assertEquals('or.at', Validator::domainSuffix('or.at'));
-        $this->assertEquals('anything.bd', Validator::domainSuffix('anything.bd'));
-
-        $this->assertNull(Validator::domainSuffix('süffix'));
-        $this->assertNull(Validator::domainSuffix('idk'));
-    }
-
-    public function testValidateDomain(): void
-    {
-        $this->assertEquals('google.com', Validator::domain('google.com'));
-        $this->assertEquals('example.xn--80asehdb', Validator::domain('example.xn--80asehdb'));
-        $this->assertEquals('example.xn--80asehdb', Validator::domain('example.онлайн'));
-
-        $this->assertNull(Validator::domain('www.google.com'));
-        $this->assertNull(Validator::domain('yolo'));
-        $this->assertNull(Validator::domain('subdomain.example.онлайн'));
-    }
-
-    public function testValidateDomainLabel(): void
-    {
-        $this->assertEquals('yolo', Validator::domainLabel('yolo'));
-        $this->assertEquals('xn--mnnersalon-q5a', Validator::domainLabel('männersalon'));
-    }
-
-    public function testValidateInvalidDomainLabel(): void
-    {
-        $this->assertNull(Validator::domainLabel('yo!lo'));
-        $this->assertNull(Validator::domainLabel(''));
-    }
-
-    public function testValidateSubdomain(): void
-    {
-        $this->assertEquals('www', Validator::subdomain('www'));
-        $this->assertEquals('sub.domain', Validator::subdomain('sub.domain'));
-        $this->assertEquals('sub.do.main', Validator::subdomain('SUB.DO.MAIN'));
-
-        $this->assertNull(Validator::subdomain('sub_domain'));
-    }
-
-    public function testValidatePort(): void
-    {
-        $this->assertEquals(0, Validator::port(0));
-        $this->assertEquals(8080, Validator::port(8080));
-        $this->assertEquals(65535, Validator::port(65535));
-
-        $this->assertNull(Validator::port(-1));
-        $this->assertNull(Validator::port(65536));
-    }
-
-    public function testValidatePath(): void
-    {
-        $this->assertEquals('/FoO/bAr', Validator::path('/FoO/bAr'));
-        $this->assertEquals('/foo-123/bar_456', Validator::path('/foo-123/bar_456'));
-        $this->assertEquals('/~foo/!bar$/&baz\'', Validator::path('/~foo/!bar$/&baz\''));
-        $this->assertEquals('/(foo)/*bar+', Validator::path('/(foo)/*bar+'));
-        $this->assertEquals('/foo,bar;baz:', Validator::path('/foo,bar;baz:'));
-        $this->assertEquals('/foo=bar@baz', Validator::path('/foo=bar@baz'));
-        $this->assertEquals('/%22foo%22', Validator::path('/"foo"'));
-        $this->assertEquals('/foo%5Cbar', Validator::path('/foo\\bar'));
-        $this->assertEquals('/b%C3%B6%C3%9Fer/pfad', Validator::path('/bößer/pfad'));
-        $this->assertEquals('/%3Chtml%3E', Validator::path('/<html>'));
-
-        // Percent character not encoded (to %25) because %ba could be legitimate percent encoded character.
-        $this->assertEquals('/foo%bar', Validator::path('/foo%bar'));
-
-        // Percent character encoded because %ga isn't a valid percent encoded character.
-        $this->assertEquals('/foo%25gar', Validator::path('/foo%gar'));
-    }
-
-    public function testValidateQuery(): void
-    {
-        $this->assertEquals('foo=bar', Validator::query('foo=bar'));
-        $this->assertEquals('foo=bar', Validator::query('?foo=bar'));
-        $this->assertEquals('foo1=bar&foo2=baz', Validator::query('foo1=bar&foo2=baz'));
-        $this->assertEquals('.foo-=_bar~', Validator::query('.foo-=_bar~'));
-        $this->assertEquals('%25foo!=$bar\'', Validator::query('%foo!=$bar\''));
-        $this->assertEquals('(foo)=*bar+', Validator::query('(foo)=*bar+'));
-        $this->assertEquals('f,o;o==bar:', Validator::query('f,o;o==bar:'));
-        $this->assertEquals('@foo=/bar%3F', Validator::query('?@foo=/bar?'));
-        $this->assertEquals('%22foo%22=bar', Validator::query('"foo"=bar'));
-        $this->assertEquals('foo%23=bar', Validator::query('foo#=bar'));
-        $this->assertEquals('f%C3%B6o=bar', Validator::query('föo=bar'));
-        $this->assertEquals('boe%C3%9Fer=query', Validator::query('boeßer=query'));
-        $this->assertEquals('foo%60=bar', Validator::query('foo`=bar'));
-        $this->assertEquals('foo%25bar=baz', Validator::query('foo%25bar=baz'));
-    }
-
-    public function testValidateFragment(): void
-    {
-        $this->assertEquals('fragment', Validator::fragment('fragment'));
-        $this->assertEquals('fragment', Validator::fragment('#fragment'));
-        $this->assertEquals('fragment1234567890', Validator::fragment('fragment1234567890'));
-        $this->assertEquals('-.fragment_~', Validator::fragment('-.fragment_~'));
-        $this->assertEquals('%25!fragment$&', Validator::fragment('%!fragment$&'));
-        $this->assertEquals('(\'fragment*)', Validator::fragment('(\'fragment*)'));
-        $this->assertEquals('+,fragment;:', Validator::fragment('#+,fragment;:'));
-        $this->assertEquals('@=fragment/?', Validator::fragment('@=fragment/?'));
-        $this->assertEquals('%22fragment%22', Validator::fragment('#"fragment"'));
-        $this->assertEquals('fragment%23', Validator::fragment('#fragment#'));
-        $this->assertEquals('%23fragment', Validator::fragment('##fragment'));
-        $this->assertEquals('fr%C3%A4gment', Validator::fragment('frägment'));
-        $this->assertEquals('boe%C3%9Fesfragment', Validator::fragment('boeßesfragment'));
-        $this->assertEquals('fragment%60', Validator::fragment('fragment`'));
-        $this->assertEquals('fragm%E2%82%ACnt', Validator::fragment('fragm%E2%82%ACnt'));
-    }
-
-    /**
-     * @param mixed $validationResult
-     * @param mixed[] $contains
-     */
-    private function assertArrayContains(mixed $validationResult, array $contains): void
-    {
-        $this->assertIsArray($validationResult);
-
-        foreach ($contains as $key => $value) {
-            $this->assertArrayHasKey($key, $validationResult);
-            $this->assertEquals($value, $validationResult[$key]);
-        }
-    }
-}
+test('ValidateFragment', function (string $fragment, string $expected) {
+    expect(Validator::fragment($fragment))
+        ->toBe($expected);
+})->with([
+    ['fragment', 'fragment'],
+    ['#fragment', 'fragment'],
+    ['fragment1234567890', 'fragment1234567890'],
+    ['-.fragment_~', '-.fragment_~'],
+    ['%!fragment$&', '%25!fragment$&'],
+    ['(\'fragment*)', '(\'fragment*)'],
+    ['#+,fragment;:', '+,fragment;:'],
+    ['@=fragment/?', '@=fragment/?'],
+    ['#"fragment"', '%22fragment%22'],
+    ['#fragment#', 'fragment%23'],
+    ['##fragment', '%23fragment'],
+    ['frägment', 'fr%C3%A4gment'],
+    ['boeßesfragment', 'boe%C3%9Fesfragment'],
+    ['fragment`', 'fragment%60'],
+    ['fragm%E2%82%ACnt', 'fragm%E2%82%ACnt'],
+]);

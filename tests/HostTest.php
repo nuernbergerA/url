@@ -7,7 +7,6 @@ beforeEach(function () {
 });
 
 test('parse host', function () {
-
     $host = new Host('www.example.com');
     $this->assertInstanceOf(Host::class, $host);
     $this->assertEquals('www.example.com', $host->__toString());
